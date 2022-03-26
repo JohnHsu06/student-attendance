@@ -3,15 +3,15 @@ package excelprocess
 import (
 	"strconv"
 	"strings"
+	"student-attendance/internal/sam-server/store/mysql"
 	"time"
 )
 
-// getStudentsInfo 函数从工作表中读出每一位学生的基本信息和课堂信息
+// getStudentsInfo 从工作表中读出每一位学生的基本信息和课堂信息
 func getStudentsInfo(stuRows [][]string, stuGrade uint16) (map[uint]*IdentifiedStudentInfo,
 	[]*UnidentifiedStudentInfo, error) {
 	identifiedStudents := make(map[uint]*IdentifiedStudentInfo, len(stuRows))
 	unidentifiedStudents := make([]*UnidentifiedStudentInfo, 0, 10)
-	var tempCount uint = 1 //临时充当学生的内部ID，待数据库内容补全后应删除
 
 	//循环工作表学生部分的遍历每一行
 	for _, row := range stuRows {
@@ -37,35 +37,35 @@ func getStudentsInfo(stuRows [][]string, stuGrade uint16) (map[uint]*IdentifiedS
 		//从D列的单元格中读取学生的班别、学号和姓名；并根据是否读取成功进行分类
 		nameStr := row[3]
 		flag, stuName, stuClass, stuNum := getStuNameAndNum(nameStr)
-		if !flag { //无法读取出班别、学号和姓名的情况
-			unidenStu := &UnidentifiedStudentInfo{
-				NameStr:       nameStr,
-				EntryTime:     entryTime,
-				WatchDuration: watchDuration,
-				TencentID:     tencentID,
-			}
+		//如果出现无法读取出班别、学号和姓名的情况
+		if !flag {
+			unidenStu := makeUnidenStuRec(nameStr, entryTime, watchDuration, tencentID)
 			unidentifiedStudents = append(unidentifiedStudents, unidenStu)
-		} else { //正确读出学生的班别、学号和姓名的情况
-			idenStu := &IdentifiedStudentInfo{
-				EntryTime:     entryTime,
-				WatchDuration: watchDuration,
-				TencentID:     tencentID,
-			}
-			idenStu.StuName = stuName
-			idenStu.StuClass = stuClass
-			idenStu.StuNumber = stuNum
-			idenStu.StuGrade = stuGrade
-			//这里应该有查询数据库，获取学生内部ID以作为map(可避免出现学生重名的情况)的key的步骤，待数据库内容写好后补全
-			//且应该补全重复登录导致的时长变短
-			identifiedStudents[tempCount] = idenStu
-			tempCount++
-			//
+			continue
 		}
+
+		//以下为可以正确读出学生的班别、学号和姓名的情况
+		//查询数据库，获取学生内部ID以作为map的key,以避免以姓名为key出现学生重名的情况
+		sID, err := mysql.GetStuID(stuGrade, stuClass, stuNum, stuName)
+		//防御性检查，避免出现表格中学生姓名符合格式但数据库中无法查询到记录的情况
+		//如无法匹配数据库，将学生加入到无法识别名单中
+		if err == mysql.ErrRecordNotFound || sID == 0 {
+			unidenStu := makeUnidenStuRec(nameStr, entryTime, watchDuration, tencentID)
+			unidentifiedStudents = append(unidentifiedStudents, unidenStu)
+			continue
+		}
+		//查看是否有学生跳转登录腾讯课堂导致存在多条记录的情况
+		cmp, ok := identifiedStudents[sID]
+		if ok && cmp.WatchDuration > watchDuration { //已有课堂记录且观看时长比新记录更长,直接忽略新纪录
+			continue
+		}
+		idenStu := makeIdenStuRec(entryTime, watchDuration, tencentID, stuName, stuClass, stuNum, stuGrade)
+		identifiedStudents[sID] = idenStu
 	}
 	return identifiedStudents, unidentifiedStudents, nil
 }
 
-// getStuEntryTime 函数读取学生进入直播间的时间
+// getStuEntryTime 读取学生进入直播间的时间
 func getStuEntryTime(str string) (*time.Time, error) {
 	str += " +0800 CST"
 	entryTime, err := time.Parse("2006/01/02 15:04:05 -0700 MST", str)
@@ -75,7 +75,7 @@ func getStuEntryTime(str string) (*time.Time, error) {
 	return &entryTime, nil
 }
 
-// getStuWatchDuration 函数读取学生观看直播的时长
+// getStuWatchDuration 读取学生观看直播的时长
 func getStuWatchDuration(str string) (uint16, error) {
 	var watchDuration uint16
 	if str == "不足一分钟" {
@@ -91,7 +91,7 @@ func getStuWatchDuration(str string) (uint16, error) {
 	return watchDuration, nil
 }
 
-// getStuNameAndNum 函数从工作表D列读取学生的班别、学号和姓名。若返回的布尔值为false,说明无法从单元格中读出上述信息
+// getStuNameAndNum 从工作表D列读取学生的班别、学号和姓名。若返回的布尔值为false,说明无法从单元格中读出上述信息
 func getStuNameAndNum(str string) (flag bool, stuName string, stuClass int8, stuNum int8) {
 	//读取中文名
 	str = strings.TrimSpace(str)
@@ -131,7 +131,7 @@ func getStuNameAndNum(str string) (flag bool, stuName string, stuClass int8, stu
 	return
 }
 
-// getCn 函数获取字符串中的中文部分
+// getCn 获取字符串中的中文部分
 func getCn(str string) (cnStr string) {
 	r := []rune(str)
 	for i := 0; i < len(r); i++ {
@@ -140,4 +140,31 @@ func getCn(str string) (cnStr string) {
 		}
 	}
 	return
+}
+
+// makeUnidenStuRec 传入一个无法识别学生的信息返回对应的一个结构体
+func makeUnidenStuRec(nameStr string, entryTime *time.Time, watchDuration uint16,
+	tencentID uint64) *UnidentifiedStudentInfo {
+	unidenStu := &UnidentifiedStudentInfo{
+		NameStr:       nameStr,
+		EntryTime:     entryTime,
+		WatchDuration: watchDuration,
+		TencentID:     tencentID,
+	}
+	return unidenStu
+}
+
+// makeIdenStuRec 传入一个可以识别学生的信息返回一个对应的结构体
+func makeIdenStuRec(entryTime *time.Time, watchDuration uint16, tencentID uint64,
+	stuName string, stuClass int8, stuNum int8, stuGrade uint16) *IdentifiedStudentInfo {
+	idenStu := &IdentifiedStudentInfo{
+		EntryTime:     entryTime,
+		WatchDuration: watchDuration,
+		TencentID:     tencentID,
+	}
+	idenStu.StuName = stuName
+	idenStu.StuClass = stuClass
+	idenStu.StuNumber = stuNum
+	idenStu.StuGrade = stuGrade
+	return idenStu
 }

@@ -2,14 +2,14 @@ package excelprocess
 
 import (
 	"strconv"
-	"student-attendance/internal/store"
+	"student-attendance/internal/pkg/model"
 	"time"
 
 	"github.com/xuri/excelize/v2"
 )
 
 // getCommitInfo 函数获取课堂的基本信息
-func getCommitInfo(f *excelize.File, ci *store.CommitInfo) error {
+func getCommitInfo(f *excelize.File, ci *model.CommitInfo) error {
 	//获取直播(开始)时间
 	broadcastTimeStr, err := f.GetCellValue(sheetName, "A3")
 	if err != nil {

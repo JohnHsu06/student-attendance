@@ -2,13 +2,15 @@ package excelprocess
 
 import (
 	"fmt"
+	"student-attendance/internal/sam-server/store/mysql"
 	"testing"
 
 	"github.com/xuri/excelize/v2"
 )
 
 func TestGetStudentsInfo(t *testing.T) {
-	f, _ := excelize.OpenFile("test.xlsx")
+	mysql.InitMysql()
+	f, _ := excelize.OpenFile("test2.xlsx")
 	rows, _ := f.GetRows("数据导出")
 	idenStus, unidenStus, err := getStudentsInfo(rows[5:], 2020)
 	if err != nil {

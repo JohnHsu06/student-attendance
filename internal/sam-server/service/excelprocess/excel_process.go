@@ -2,21 +2,21 @@ package excelprocess
 
 import (
 	"errors"
-	"student-attendance/internal/store"
+	"student-attendance/internal/pkg/model"
 	"time"
 
 	"github.com/xuri/excelize/v2"
 )
 
 type excelResult struct {
-	CommitInfo           *store.CommitInfo
+	CommitInfo           *model.CommitInfo
 	IdentifiedStudents   map[uint]*IdentifiedStudentInfo
 	UnidentifiedStudents []*UnidentifiedStudentInfo
 }
 
 // IdentifiedStudentInfo 用于存储Excel表格中可以辨别身份学生的课堂信息
 type IdentifiedStudentInfo struct {
-	store.StudentInfo
+	model.StudentInfo
 	EntryTime     *time.Time
 	WatchDuration uint16
 	TencentID     uint64
@@ -38,7 +38,7 @@ var (
 var sheetName = "数据导出"
 
 // readClassInfo从上传的考勤Excel表格中读出课堂基本信息和学生信息
-func readClassInfo(fileName string, ci *store.CommitInfo) (*excelResult, error) {
+func readClassInfo(fileName string, ci *model.CommitInfo) (*excelResult, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, err

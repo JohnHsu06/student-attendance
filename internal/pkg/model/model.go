@@ -1,4 +1,4 @@
-package store
+package model
 
 import "time"
 
@@ -7,7 +7,7 @@ type StudentInfo struct {
 	StuGrade  uint16 //如2021,表示2021级,即初一学生;同理，2020即初二,2019即初三
 	StuClass  int8
 	StuNumber int8
-	StuName   string
+	StuName   string `gorm:"type:varchar(40)"`
 }
 
 // CommitInfo用于存储每次提交的课堂记录的主要信息
