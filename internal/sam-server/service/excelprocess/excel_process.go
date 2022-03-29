@@ -2,6 +2,7 @@ package excelprocess
 
 import (
 	"errors"
+	"log"
 	"student-attendance/internal/pkg/model"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 type excelResult struct {
-	CommitInfo           *model.CommitInfo
+	// CommitInfo           *model.CommitInfo
 	IdentifiedStudents   map[uint]*IdentifiedStudentInfo
 	UnidentifiedStudents []*UnidentifiedStudentInfo
 }
@@ -37,10 +38,11 @@ var (
 // 腾讯课堂导出的学生考勤数据Excel表格中的默认工作表名
 var sheetName = "数据导出"
 
-// readClassInfo从上传的考勤Excel表格中读出课堂基本信息和学生信息
-func readClassInfo(fileName string, ci *model.CommitInfo) (*excelResult, error) {
-	f, err := excelize.OpenFile(fileName)
+// ReadClassInfo从上传的考勤Excel表格中读出课堂基本信息和学生信息
+func ReadClassInfo(filePath string, ci *model.CommitInfo) (*excelResult, error) {
+	f, err := excelize.OpenFile(filePath)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	defer f.Close()
@@ -65,7 +67,7 @@ func readClassInfo(fileName string, ci *model.CommitInfo) (*excelResult, error) 
 		return nil, err
 	}
 	excelRes := &excelResult{
-		CommitInfo:           ci,
+		// CommitInfo:           ci,
 		IdentifiedStudents:   identifiedStudents,
 		UnidentifiedStudents: unidentifiedStudents,
 	}
