@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>考勤结果</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="../static/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="../static/assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="../static/mycss/result.css" rel="stylesheet">
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand">易考勤</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+
+      <h1 class="text-center">考勤结果</h1>
+        <h2>概况</h2><br>
+        <div class="row">
+          {{ with .Ci }}
+            <div class="col-md-4"><p class="lead"><strong>教师:</strong> {{.TeacherName}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>直播时间:</strong> {{.BroadcastTime}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>教学周:</strong> {{.WeekNum}}</p></div> 
+            <div class="col-md-4"><p class="lead"><strong>科目:</strong> {{.Subject}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>授课内容:</strong> {{.ClassTheme}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>上课班级:</strong> {{.AttendanceClasses}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>应到人数:</strong> {{.ExpectedArrivalNum}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>实到人数:</strong> {{.ActualArrivalNum}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>出勤率:</strong> {{.AttendanceRate}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>上课时间:</strong> {{.ClassStartTime}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>下课时间:</strong> {{.ClassEndTime}}</p></div>
+            <div class="col-md-4"><p class="lead"><strong>课堂持续时间:</strong> {{.ClassDuration}} 分钟</p></div>
+          {{ end }}
+        </div>
+
+        <br><hr><br>
+
+        {{ if .Unidens }}
+        <h2>旁听人员</h2>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>进入直播间时间</th>
+                <th>观看时长(单位:分钟)</th>
+                <th>腾讯课堂ID</th>
+              </tr>
+            </thead>
+            <tbody>
+            {{ with .Unidens }}
+              {{ range $_, $uniden := . }}
+              <tr>
+                <th>{{$uniden.NameStr}}</th>
+                <th>{{$uniden.EntryTime}}</th>
+                <th>{{$uniden.WatchDuration}}</th>
+                <th>{{$uniden.TencentID}}</th>
+              </tr>
+              {{ end }}
+            {{ end }}
+            </tbody>
+          </table>
+        </div>
+        {{ end }}
+
+        <br><hr><br>
+
+        <h2>各班详情</h2>
+        <p class="text-info">说明:迟到学生后的数据为进入直播间的时间,早退学生后的数据为观看时长</p>
+          {{ range $_, $classInfo := .Class}}
+          <h3>{{$classInfo.ClassNum}}班</h3>
+          
+            {{ if $classInfo.AbsentList }}
+              <p>
+                <strong>缺勤:</strong>
+                {{ range $absNum, $absName := $classInfo.AbsentList }}
+                  {{$absName}}
+                {{ end }}
+              </p>
+            {{ end }}
+
+            {{ if $classInfo.LateList }}
+              <p>
+                <strong>迟到:</strong>
+                {{ range $lateName, $lateTime := $classInfo.LateList }}
+                  {{$lateName}}{{$lateTime}}
+                {{ end }}
+              </p>
+            {{ end }}
+
+            {{ if $classInfo.EarlyLeaveList }}
+            <p>
+              <strong>早退:</strong>
+              {{ range $elName, $elTime := $classInfo.EarlyLeaveList }}
+                {{$elName}}{{$elTime}}
+              {{ end }}
+            </p> 
+            {{ end }}
+
+            <br>       
+          {{ end }}
+
+    </div><!-- /.container -->
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <script src="../static/dist/js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../static/assets/js/ie10-viewport-bug-workaround.js"></script>
+  </body>
+</html>

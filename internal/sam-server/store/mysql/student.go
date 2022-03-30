@@ -31,13 +31,13 @@ func GetStuID(grade uint16, class int8, num int8, name string) (uint, error) {
 }
 
 // GetStusByGradeNClass 根据年级和班别返回该班的所有学生
-func GetStusByGradeNClass(grade uint16, class int8) []Student {
+func GetStusByGradeNClass(grade uint16, class int8) []*Student {
 	// cond结构体存储学生的基本信息，作为查询条件
 	cond := new(Student)
 	cond.StuGrade = grade
 	cond.StuClass = class
 
-	students := make([]Student, 0, 70)
+	students := make([]*Student, 0, 70)
 	res := db.Where(cond).Find(&students)
 	if res.Error != nil {
 		fmt.Println(res.Error)

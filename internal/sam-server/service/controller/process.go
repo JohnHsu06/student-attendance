@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"student-attendance/internal/pkg/model"
 	"student-attendance/internal/pkg/utils"
@@ -12,7 +11,7 @@ import (
 	"time"
 )
 
-func Process(dst string, ui *model.UploadInfo) (*model.CommitInfo, error) {
+func Process(dst string, ui *model.UploadInfo) (map[string]interface{}, error) {
 	//创建一个ci用于存储这一次记录提交的主要信息
 	ci := new(model.CommitInfo)
 	ci.Subject = utils.GetSubjectCode(ui.Subject)
@@ -36,11 +35,25 @@ func Process(dst string, ui *model.UploadInfo) (*model.CommitInfo, error) {
 	expectedStu := getExpectedStudents(ci.Grade, ci.AttendanceClasses)
 	ci.ExpectedArrivalNum = uint16(len(expectedStu))
 	//应到学生名单与可识别学生名单比对得到缺勤学生与实际到达人数,此操作后应到学生名单里的人员为缺勤名单
-	ci.ActualArrivalNum = getAbsentStusNArrivalNum(expectedStu, excelRes.IdentifiedStudents)
+	absentStus, arrivalCount := getAbsentStusNArrivalNum(expectedStu, excelRes.IdentifiedStudents)
+	ci.ActualArrivalNum = arrivalCount
 	//从实到学生和应到学生得到学生出勤率
 	ci.AttendanceRate = getAttendanceRate(ci.ActualArrivalNum, ci.ExpectedArrivalNum)
 
-	return ci, nil
+	//判断缺勤学生,早退学生
+	lateStudents := getLateStudents(ci.ClassStartTime, excelRes.IdentifiedStudents)
+	earlyLeaveStudents := getEarlyLeaveStudents(ci.ClassStartTime, ci.ClassEndTime, excelRes.IdentifiedStudents)
+
+	//生成结果
+	ri := &resultInfo{
+		Ci:             ci,
+		Unidens:        excelRes.UnidentifiedStudents,
+		AbsentStus:     absentStus,
+		LateStus:       lateStudents,
+		EarlyLeaveStus: earlyLeaveStudents,
+	}
+	res := ri.makeResult()
+	return res, nil
 }
 
 // parseTime 将ui中的短格式日期字符串与excel中读出的课堂时间结合解析出可以用于时间比较的time.Time格式
@@ -85,7 +98,7 @@ func getExpectedStudents(grade uint16, classes []int8) map[uint]*mysql.Student {
 		aClassStu := mysql.GetStusByGradeNClass(grade, class)
 		//将该班所有学生加入应到学生名单
 		for _, stu := range aClassStu {
-			expectedStus[stu.ID] = &stu
+			expectedStus[stu.ID] = stu
 		}
 	}
 	return expectedStus
@@ -93,21 +106,49 @@ func getExpectedStudents(grade uint16, classes []int8) map[uint]*mysql.Student {
 
 // getAbsentStusNArrivalNum 通过应到学生名单与可识别学生名单比对得到缺勤学生名单与实到人数
 func getAbsentStusNArrivalNum(expectedStus map[uint]*mysql.Student,
-	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) uint16 {
+	idenStus map[uint]*excelprocess.IdentifiedStudentInfo) (map[uint]*mysql.Student, uint16) {
 	var arrivalCount uint16
-	//遍历可识别学生,删除应到学生名单中的对应记录
-	for ID := range IdenStus {
-		_, ok := expectedStus[ID]
-		if ok { //该学生已到
-			delete(expectedStus, ID)
+	absentStus := make(map[uint]*mysql.Student)
+	//遍历应到学生名单,如在可识别学生中没有记录，则加入缺勤学生名单中
+	for ID, stu := range expectedStus {
+		_, ok := idenStus[ID]
+		if !ok {
+			absentStus[ID] = stu
+		} else {
 			arrivalCount++
 		}
 	}
-	return arrivalCount
+	return absentStus, arrivalCount
 }
 
 // getAttendanceRate 根据ci中实到人数与应到人数的比值算出出勤率
-func getAttendanceRate(actualArrivalNum, expectedArrivalNum uint16) string {
-	attendanceRate := float64(actualArrivalNum) / float64(expectedArrivalNum)
-	return strconv.FormatFloat(attendanceRate*100, 'f', 2, 64) + "%"
+func getAttendanceRate(actualArrivalNum, expectedArrivalNum uint16) float64 {
+	return float64(actualArrivalNum) / float64(expectedArrivalNum)
+}
+
+// getLateStudents 根据上课时间可识别学生名单返回迟到学生名单
+func getLateStudents(classStartTime *time.Time,
+	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) map[uint]*excelprocess.IdentifiedStudentInfo {
+	lateStu := make(map[uint]*excelprocess.IdentifiedStudentInfo)
+	for ID, stuInfo := range IdenStus {
+		if stuInfo.EntryTime.After(*classStartTime) {
+			lateStu[ID] = stuInfo
+		}
+	}
+	return lateStu
+}
+
+// getEarlyLeaveStudents 根据课堂时间和可识别学生名单返回早退学生名单
+func getEarlyLeaveStudents(classStartTime, classEndTime *time.Time,
+	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) map[uint]*excelprocess.IdentifiedStudentInfo {
+	tempDuration := classEndTime.Sub(*classStartTime)
+	classDuration := uint16(tempDuration / time.Minute)
+
+	earlyLeaveStus := make(map[uint]*excelprocess.IdentifiedStudentInfo)
+	for ID, stuInfo := range IdenStus {
+		if stuInfo.WatchDuration < classDuration {
+			earlyLeaveStus[ID] = stuInfo
+		}
+	}
+	return earlyLeaveStus
 }

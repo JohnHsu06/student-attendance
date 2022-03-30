@@ -46,7 +46,7 @@ func UploadHandler(c *gin.Context) {
 	}
 
 	//保存上传的考勤文件
-	dst := "./excelfiles" + file.Filename
+	dst := strings.Join([]string{"./excelfiles/", ui.User, file.Filename}, "")
 	log.Println(file.Filename)
 	c.SaveUploadedFile(file, dst)
 
@@ -55,5 +55,6 @@ func UploadHandler(c *gin.Context) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	c.JSON(http.StatusOK, res)
+	c.HTML(http.StatusOK, "result.html", res)
+
 }

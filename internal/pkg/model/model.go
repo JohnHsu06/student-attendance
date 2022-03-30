@@ -30,7 +30,7 @@ type CommitInfo struct {
 	ActualArrivalNum   uint16
 	WatchNum           uint16
 	Grade              uint16
-	AttendanceRate     string
+	AttendanceRate     float64
 	BroadcastTime      *time.Time
 	ClassStartTime     *time.Time
 	ClassEndTime       *time.Time
