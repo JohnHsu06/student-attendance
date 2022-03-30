@@ -15,14 +15,15 @@ type resultInfo struct {
 	AbsentStus     map[uint]*mysql.Student
 	LateStus       map[uint]*excelprocess.IdentifiedStudentInfo
 	EarlyLeaveStus map[uint]*excelprocess.IdentifiedStudentInfo
+	NotSignInStus  map[uint]*excelprocess.IdentifiedStudentInfo
 }
 
 // makeResult 生成用于在html页面上显示的结果
 func (r *resultInfo) makeResult() map[string]interface{} {
 	Result := make(map[string]interface{})
 	Result["Ci"] = r.makeMainInfo("2022-02-21")
-	Result["Unidens"] = r.Unidens
-	Result["ClassList"] = r.makeClassList()
+	Result["Unidens"] = r.makeUnidenInfo()
+
 	class := make([]map[string]interface{}, 0, 10)
 	for _, classNum := range r.Ci.AttendanceClasses {
 		class = append(class, r.makeClassInfo(classNum))
@@ -55,13 +56,26 @@ func (r *resultInfo) makeMainInfo(firstWeekDay string) map[string]interface{} {
 	return ci
 }
 
-// makeClassList返回各班班号字符串切片
-func (r *resultInfo) makeClassList() []string {
-	classList := make([]string, 0, 10)
-	for _, class := range r.Ci.AttendanceClasses {
-		classList = append(classList, strconv.Itoa(int(class)))
+type Unidens struct {
+	NameStr       string
+	EntryTime     string
+	WatchDuration string
+	LeaveTime     string
+	TencentID     uint64
+}
+
+// makeUnidenInfo 生成合适html页面显示的无法识别人员的结果
+func (r *resultInfo) makeUnidenInfo() []*Unidens {
+	ResSlice := make([]*Unidens, 0, len(r.Unidens))
+	for _, v := range r.Unidens {
+		uniden := new(Unidens)
+		uniden.NameStr = v.NameStr
+		uniden.EntryTime = v.EntryTime.Format("15:04:05")
+		uniden.WatchDuration = strconv.Itoa(int(v.WatchDuration)) + "分钟"
+		uniden.TencentID = v.TencentID
+		ResSlice = append(ResSlice, uniden)
 	}
-	return classList
+	return ResSlice
 }
 
 // makeClassInfo 根据班号生成各班结果
@@ -92,12 +106,24 @@ func (r *resultInfo) makeClassInfo(classNum int8) map[string]interface{} {
 	earlyLeaveList := make(map[string]string)
 	for id, stu := range r.EarlyLeaveStus {
 		if stu.StuClass == classNum {
-			watchTime := strconv.Itoa(int(stu.WatchDuration)) + "分钟"
-			earlyLeaveList[stu.StuName] = watchTime
+			//这两行其实是判断观看时长不足的逻辑(暂时弃用)
+			// watchTime := strconv.Itoa(int(stu.WatchDuration)) + "分钟"
+			// earlyLeaveList[stu.StuName] = watchTime
+			leaveTime := stu.LeaveTime.Format("15:04")
+			earlyLeaveList[stu.StuName] = leaveTime
 			delete(r.EarlyLeaveStus, id)
 		}
 	}
 	problem["EarlyLeaveList"] = earlyLeaveList
+	//该班没有签到的人员
+	notSignInList := make([]string, 0, 5)
+	for id, stu := range r.NotSignInStus {
+		if stu.StuClass == classNum {
+			notSignInList = append(notSignInList, stu.StuName)
+			delete(r.NotSignInStus, id)
+		}
+	}
+	problem["NotSignInList"] = notSignInList
 
 	return problem
 }

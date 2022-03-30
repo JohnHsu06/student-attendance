@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"student-attendance/internal/pkg/model"
@@ -26,8 +25,14 @@ func Process(dst string, ui *model.UploadInfo) (map[string]interface{}, error) {
 		return nil, err
 	}
 	//根据Excel处理后ci里的直播日期，将直播开始与结束时间转换成time.Time形式
-	ci.ClassStartTime = parseTime(ui.StartTime, ci)
-	ci.ClassEndTime = parseTime(ui.EndTime, ci)
+	ci.ClassStartTime, err = parseTime(ui.StartTime, ci)
+	if err != nil {
+		return nil, err
+	}
+	ci.ClassEndTime, err = parseTime(ui.EndTime, ci)
+	if err != nil {
+		return nil, err
+	}
 
 	//从可识别学生中获取上课的班级列表
 	ci.AttendanceClasses = getClasses(excelRes.IdentifiedStudents)
@@ -40,9 +45,12 @@ func Process(dst string, ui *model.UploadInfo) (map[string]interface{}, error) {
 	//从实到学生和应到学生得到学生出勤率
 	ci.AttendanceRate = getAttendanceRate(ci.ActualArrivalNum, ci.ExpectedArrivalNum)
 
-	//判断缺勤学生,早退学生
-	lateStudents := getLateStudents(ci.ClassStartTime, excelRes.IdentifiedStudents)
-	earlyLeaveStudents := getEarlyLeaveStudents(ci.ClassStartTime, ci.ClassEndTime, excelRes.IdentifiedStudents)
+	//判断迟到学生
+	lateStudents := getLateStudents(excelRes.IdentifiedStudents, ci.ClassStartTime)
+	//判断早退学生
+	earlyLeaveStudents := getEarlyLeaveStudents(excelRes.IdentifiedStudents, ci.ClassEndTime)
+	//判断没有签到学生
+	notSignInStudents := getNotSignInStudents(excelRes.IdentifiedStudents)
 
 	//生成结果
 	ri := &resultInfo{
@@ -51,20 +59,21 @@ func Process(dst string, ui *model.UploadInfo) (map[string]interface{}, error) {
 		AbsentStus:     absentStus,
 		LateStus:       lateStudents,
 		EarlyLeaveStus: earlyLeaveStudents,
+		NotSignInStus:  notSignInStudents,
 	}
 	res := ri.makeResult()
 	return res, nil
 }
 
 // parseTime 将ui中的短格式日期字符串与excel中读出的课堂时间结合解析出可以用于时间比较的time.Time格式
-func parseTime(timeStr string, ci *model.CommitInfo) *time.Time {
+func parseTime(timeStr string, ci *model.CommitInfo) (*time.Time, error) {
 	preTimeStr := ci.BroadcastTime.Format("2006-01-02")
 	timeStr = strings.Join([]string{preTimeStr, timeStr, "+0800 CST"}, " ")
 	res, err := time.Parse("2006-01-02 15:04 -0700 MST", timeStr)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
-	return &res
+	return &res, nil
 }
 
 // getClasses 从可识别学生map中得到上课的班级列表
@@ -127,8 +136,8 @@ func getAttendanceRate(actualArrivalNum, expectedArrivalNum uint16) float64 {
 }
 
 // getLateStudents 根据上课时间可识别学生名单返回迟到学生名单
-func getLateStudents(classStartTime *time.Time,
-	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) map[uint]*excelprocess.IdentifiedStudentInfo {
+func getLateStudents(IdenStus map[uint]*excelprocess.IdentifiedStudentInfo,
+	classStartTime *time.Time) map[uint]*excelprocess.IdentifiedStudentInfo {
 	lateStu := make(map[uint]*excelprocess.IdentifiedStudentInfo)
 	for ID, stuInfo := range IdenStus {
 		if stuInfo.EntryTime.After(*classStartTime) {
@@ -139,16 +148,41 @@ func getLateStudents(classStartTime *time.Time,
 }
 
 // getEarlyLeaveStudents 根据课堂时间和可识别学生名单返回早退学生名单
-func getEarlyLeaveStudents(classStartTime, classEndTime *time.Time,
-	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) map[uint]*excelprocess.IdentifiedStudentInfo {
-	tempDuration := classEndTime.Sub(*classStartTime)
-	classDuration := uint16(tempDuration / time.Minute)
-
+func getEarlyLeaveStudents(IdenStus map[uint]*excelprocess.IdentifiedStudentInfo,
+	classEndTime *time.Time) map[uint]*excelprocess.IdentifiedStudentInfo {
 	earlyLeaveStus := make(map[uint]*excelprocess.IdentifiedStudentInfo)
 	for ID, stuInfo := range IdenStus {
-		if stuInfo.WatchDuration < classDuration {
+		if stuInfo.LeaveTime.Before(*classEndTime) {
 			earlyLeaveStus[ID] = stuInfo
 		}
 	}
 	return earlyLeaveStus
+}
+
+// // getEarlyLeaveStudents 根据课堂时间和可识别学生名单返回早退学生名单
+// //(暂时弃用,该逻辑实际为观看时长不足的学生名单)
+// func getEarlyLeaveStudents(classStartTime, classEndTime *time.Time,
+// 	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) map[uint]*excelprocess.IdentifiedStudentInfo {
+// 	tempDuration := classEndTime.Sub(*classStartTime)
+// 	classDuration := uint16(tempDuration / time.Minute)
+
+// 	earlyLeaveStus := make(map[uint]*excelprocess.IdentifiedStudentInfo)
+// 	for ID, stuInfo := range IdenStus {
+// 		if stuInfo.WatchDuration < classDuration {
+// 			earlyLeaveStus[ID] = stuInfo
+// 		}
+// 	}
+// 	return earlyLeaveStus
+// }
+
+// getNotSignInStudents 判断没有签到的学生
+func getNotSignInStudents(
+	IdenStus map[uint]*excelprocess.IdentifiedStudentInfo) map[uint]*excelprocess.IdentifiedStudentInfo {
+	notSignInStus := make(map[uint]*excelprocess.IdentifiedStudentInfo)
+	for ID, stuInfo := range IdenStus {
+		if !stuInfo.SignIn {
+			notSignInStus[ID] = stuInfo
+		}
+	}
+	return notSignInStus
 }

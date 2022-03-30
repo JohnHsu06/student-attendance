@@ -12,7 +12,7 @@ func TestParseTime(t *testing.T) {
 	ci := new(model.CommitInfo)
 	ci.BroadcastTime = &tmpT
 
-	res := parseTime("09:30", ci)
+	res, _ := parseTime("09:30", ci)
 	fmt.Println(res)
 
 }

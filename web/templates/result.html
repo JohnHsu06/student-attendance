@@ -7,6 +7,7 @@
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <meta name="description" content="">
     <meta name="author" content="">
+    <link rel="icon" href="../static/img/favicon.ico">
 
     <title>考勤结果</title>
 
@@ -53,15 +54,64 @@
 
         <br><hr><br>
 
+        <h2>各班详情</h2>
+        <p class="text-info">说明:早退学生“退出时间”是由“进入直播间时间”与“观看时长”相加推算的结果</p>
+        <div>
+          {{ range $_, $classInfo := .Class}}
+          <h3>{{$classInfo.ClassNum}}班</h3>
+          
+            {{ if $classInfo.AbsentList }}
+              <p>
+                <strong>缺勤:</strong>
+                {{ range $absNum, $absName := $classInfo.AbsentList }}
+                  {{$absName}}
+                {{ end }}
+              </p>
+            {{ end }}
+
+            {{ if $classInfo.LateList }}
+              <p>
+                <strong>迟到:</strong>
+                {{ range $lateName, $lateTime := $classInfo.LateList }}
+                  {{$lateName}}{{$lateTime}} 
+                {{ end }}
+              </p>
+            {{ end }}
+
+            {{ if $classInfo.EarlyLeaveList }}
+            <p>
+              <strong>早退:</strong>
+              {{ range $elName, $elTime := $classInfo.EarlyLeaveList }}
+                {{$elName}}{{$elTime}}
+              {{ end }}
+            </p> 
+            {{ end }}
+
+            {{ if $classInfo.NotSignInList }}
+            <p>
+              <strong>没有签到:</strong>
+              {{ range $noSignNum, $noSignName := $classInfo.NotSignInList }}
+                {{$noSignName}}
+              {{ end }}
+            </p>
+          {{ end }}
+
+            <br>       
+          {{ end }}
+        </div>
+
+        <br><hr><br>
+
         {{ if .Unidens }}
-        <h2>旁听人员</h2>
+        <h2>旁听人员<small>（含姓名格式无法识别学生）</small></h2>
+        <a href="/help">对考勤结果不满意？为什么系统没有识别到我的学生？</a>
         <div class="table-responsive">
           <table class="table table-hover">
             <thead>
               <tr>
                 <th>姓名</th>
                 <th>进入直播间时间</th>
-                <th>观看时长(单位:分钟)</th>
+                <th>观看时长</th>
                 <th>腾讯课堂ID</th>
               </tr>
             </thead>
@@ -81,42 +131,6 @@
         </div>
         {{ end }}
 
-        <br><hr><br>
-
-        <h2>各班详情</h2>
-        <p class="text-info">说明:迟到学生后的数据为进入直播间的时间,早退学生后的数据为观看时长</p>
-          {{ range $_, $classInfo := .Class}}
-          <h3>{{$classInfo.ClassNum}}班</h3>
-          
-            {{ if $classInfo.AbsentList }}
-              <p>
-                <strong>缺勤:</strong>
-                {{ range $absNum, $absName := $classInfo.AbsentList }}
-                  {{$absName}}
-                {{ end }}
-              </p>
-            {{ end }}
-
-            {{ if $classInfo.LateList }}
-              <p>
-                <strong>迟到:</strong>
-                {{ range $lateName, $lateTime := $classInfo.LateList }}
-                  {{$lateName}}{{$lateTime}}
-                {{ end }}
-              </p>
-            {{ end }}
-
-            {{ if $classInfo.EarlyLeaveList }}
-            <p>
-              <strong>早退:</strong>
-              {{ range $elName, $elTime := $classInfo.EarlyLeaveList }}
-                {{$elName}}{{$elTime}}
-              {{ end }}
-            </p> 
-            {{ end }}
-
-            <br>       
-          {{ end }}
 
     </div><!-- /.container -->
 

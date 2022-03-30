@@ -14,11 +14,11 @@ func getCommitInfo(f *excelize.File, ci *model.CommitInfo) error {
 	//获取直播(开始)时间
 	broadcastTimeStr, err := f.GetCellValue(sheetName, "A3")
 	if err != nil {
-		return ErrIncompleteExcelFile
+		return err
 	}
 	tempTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", broadcastTimeStr)
 	if err != nil {
-		return ErrIncompleteExcelFile
+		return err
 	}
 	ci.BroadcastTime = &tempTime
 	//获取直播时间是当年的第几周
@@ -28,19 +28,19 @@ func getCommitInfo(f *excelize.File, ci *model.CommitInfo) error {
 	//获取观看直播的人数
 	watchNumStr, err := f.GetCellValue(sheetName, "C3")
 	if err != nil {
-		return ErrIncompleteExcelFile
+		return err
 	}
 	watchNumStr = strings.TrimSuffix(watchNumStr, ".0")
 	tempNum, err := strconv.ParseUint(watchNumStr, 10, 16)
 	if err != nil {
-		return ErrIncompleteExcelFile
+		return err
 	}
 	ci.WatchNum = uint16(tempNum)
 
 	//获取课程主题
 	ci.ClassTheme, err = f.GetCellValue(sheetName, "C6")
 	if err != nil {
-		return ErrIncompleteExcelFile
+		return err
 	}
 
 	return nil

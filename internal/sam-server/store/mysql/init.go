@@ -27,6 +27,8 @@ func InitMysql() {
 	if err != nil {
 		panic(err)
 	}
+	//关闭错误输出
+
 	// SetMaxIdleConns 设置空闲连接池中连接的最大数量
 	sqlDB.SetMaxIdleConns(15)
 	// SetMaxOpenConns 设置打开数据库连接的最大数量

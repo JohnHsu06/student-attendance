@@ -20,6 +20,8 @@ type IdentifiedStudentInfo struct {
 	model.StudentInfo
 	EntryTime     *time.Time
 	WatchDuration uint16
+	LeaveTime     *time.Time
+	SignIn        bool
 	TencentID     uint64
 }
 
@@ -28,6 +30,8 @@ type UnidentifiedStudentInfo struct {
 	NameStr       string
 	EntryTime     *time.Time
 	WatchDuration uint16
+	LeaveTime     *time.Time
+	SignIn        bool
 	TencentID     uint64
 }
 
@@ -49,7 +53,7 @@ func ReadClassInfo(filePath string, ci *model.CommitInfo) (*excelResult, error) 
 
 	//判断课堂信息表中是否含有"数据导出"工作表
 	if n := f.GetSheetIndex(sheetName); n == -1 {
-		return nil, ErrIncompleteExcelFile
+		return nil, err
 	}
 
 	//获取课堂基本信息

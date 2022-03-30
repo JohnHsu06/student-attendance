@@ -7,7 +7,7 @@
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <meta name="description" content="">
     <meta name="author" content="">
-    <!-- <link rel="icon" href="../../favicon.ico"> -->
+    <link rel="icon" href="../static/img/favicon.ico">
 
     <title>易考勤</title>
 
@@ -21,7 +21,7 @@
     <link href="../static/assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="../static/mycss/upload.css" rel="stylesheet">
+    <link href="../static/mycss/cover.css" rel="stylesheet">
 
   </head>
 
@@ -35,7 +35,7 @@
 
           <div class="masthead clearfix">
             <div class="inner">
-              <h3 class="masthead-brand">易考勤</h3>
+              <h3 class="masthead-brand" style="color:#339966">易考勤</h3>
               <!-- <nav>
                 <ul class="nav masthead-nav">
                   <li class="active"><a href="#">Home</a></li>
@@ -50,7 +50,7 @@
 
             <h1 class="cover-heading">考勤记录上传</h1>
 
-            <p class="lead text-primary">当前数据库仅支持罗外初二年级学生考勤</p>
+            <p class="lead text-primary">当前数据库仅支持罗外实验初二年级学生考勤</p>
             
             <!--表单部分-->
             <form action="/upload" method="post" enctype="multipart/form-data">
@@ -106,7 +106,6 @@
                 <label for="exampleInputFile">考勤文件上传</label>
                 <input type="file" name="excel-file" id="exampleInputFile">
                 <p class="text-danger">请上传原始的腾讯课堂考勤记录(.xlsx文件),在上传前修改记录会导致识别失败</p>
-                
               </div>
               <button type="submit" class="btn btn-primary">提交</button>
             </form> 

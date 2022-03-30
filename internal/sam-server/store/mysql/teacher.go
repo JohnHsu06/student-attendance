@@ -36,5 +36,8 @@ func GetTeacherByNameNSubject(name, sub string) (*Teacher, error) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrRecordNotFound
 	}
+	if err != nil {
+		return nil, err
+	}
 	return tec, nil
 }
